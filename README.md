@@ -1,1 +1,1 @@
-Forecast and Simulations code for the subhalo lensing paper
+The CASSL Pipeline for JWST strong lensing forecasts and simulations, used in the paper "ML-Driven Strong Lens Discoveries: Down to θ_E∼0.03″ and Mhalo<10^11M☉", by E. Silver, R. Wang, X. Huang, A. Bolton, C. Storfer, and S. Banka (https://ui.adsabs.harvard.edu/abs/2025arXiv250701943S).
