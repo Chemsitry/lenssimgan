@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How the SimGAN Works</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d2e;
+    --surface2: #222538;
+    --accent: #7c83ff;
+    --accent2: #ff7c7c;
+    --accent3: #7cffb4;
+    --text: #e0e0f0;
+    --muted: #888aaa;
+    --border: #2e3155;
+    --math: #ffd580;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 6rem;
+  }
+  h1 { font-size: 2.2rem; color: var(--accent); margin-bottom: 0.3rem; }
+  h2 { font-size: 1.6rem; color: var(--accent); margin: 2.5rem 0 0.8rem; border-bottom: 1px solid var(--border); padding-bottom: 0.4rem; }
+  h3 { font-size: 1.2rem; color: var(--accent3); margin: 1.8rem 0 0.5rem; }
+  h4 { font-size: 1rem; color: var(--accent2); margin: 1.2rem 0 0.3rem; }
+  p { margin-bottom: 0.9rem; }
+  a { color: var(--accent); }
+  code {
+    background: var(--surface2);
+    color: #c8d0ff;
+    font-family: 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.88em;
+    padding: 0.15em 0.4em;
+    border-radius: 4px;
+  }
+  pre {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.2rem;
+    overflow-x: auto;
+    margin: 1rem 0 1.2rem;
+    font-family: 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+  .math {
+    color: var(--math);
+    font-family: 'Cambria Math', 'Georgia', serif;
+    font-style: italic;
+  }
+  .math-block {
+    background: var(--surface);
+    border-left: 3px solid var(--math);
+    border-radius: 0 8px 8px 0;
+    padding: 1rem 1.2rem;
+    margin: 1rem 0;
+    color: var(--math);
+    font-family: 'Cambria Math', 'Georgia', serif;
+    font-size: 1.05rem;
+    overflow-x: auto;
+  }
+  .note {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    padding: 0.9rem 1.1rem;
+    margin: 1rem 0;
+    font-size: 0.95rem;
+  }
+  .note.physics {
+    border-left-color: var(--accent3);
+  }
+  .note.warning {
+    border-left-color: var(--accent2);
+  }
+  .note strong { color: var(--accent); }
+  .note.physics strong { color: var(--accent3); }
+  .note.warning strong { color: var(--accent2); }
+  .toc {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.2rem 1.5rem;
+    margin: 1.5rem 0 2.5rem;
+  }
+  .toc h3 { margin-top: 0; color: var(--muted); font-size: 0.9rem; letter-spacing: 0.05em; text-transform: uppercase; }
+  .toc ol { padding-left: 1.4rem; }
+  .toc li { margin: 0.3rem 0; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .arch-diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: 1.2rem 0;
+    font-family: monospace;
+    font-size: 0.85rem;
+    line-height: 1.8;
+    overflow-x: auto;
+  }
+  .arch-diagram .label { color: var(--muted); }
+  .arch-diagram .box { color: var(--accent3); }
+  .arch-diagram .arrow { color: var(--muted); }
+  .arch-diagram .highlight { color: var(--accent2); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0 1.5rem;
+    font-size: 0.9rem;
+  }
+  th {
+    background: var(--surface2);
+    color: var(--accent);
+    text-align: left;
+    padding: 0.6rem 0.9rem;
+    border: 1px solid var(--border);
+  }
+  td {
+    padding: 0.55rem 0.9rem;
+    border: 1px solid var(--border);
+  }
+  tr:nth-child(even) td { background: var(--surface); }
+  .pill {
+    display: inline-block;
+    font-size: 0.75rem;
+    padding: 0.1em 0.6em;
+    border-radius: 999px;
+    font-weight: 600;
+    margin-left: 0.4em;
+    vertical-align: middle;
+  }
+  .pill.real { background: #2a4a2a; color: var(--accent3); }
+  .pill.sim  { background: #2a2a4a; color: #9999ff; }
+  .pill.ref  { background: #4a2a2a; color: var(--accent2); }
+  .subtitle { color: var(--muted); font-size: 1rem; margin-bottom: 2rem; }
+  .flow-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+  .flow-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.5rem 0.9rem;
+    text-align: center;
+    min-width: 110px;
+  }
+  .flow-box.R { border-color: var(--accent2); color: var(--accent2); }
+  .flow-box.D { border-color: var(--accent); color: var(--accent); }
+  .flow-box.data { border-color: var(--accent3); color: var(--accent3); }
+  .flow-arrow { color: var(--muted); font-size: 1.3rem; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+</style>
+</head>
+<body>
+
+<h1>How Your SimGAN Actually Works</h1>
+<p class="subtitle">A deep dive for a physics mind — no ML assumed, no hand-waving.</p>
+
+<div class="toc">
+  <h3>Contents</h3>
+  <ol>
+    <li><a href="#problem">The Problem: Simulations Don't Look Real</a></li>
+    <li><a href="#gan-idea">The GAN Idea — The Two-Player Game</a></li>
+    <li><a href="#architecture">Network Architectures in Detail</a></li>
+    <li><a href="#loss">The Loss Functions — Exactly</a></li>
+    <li><a href="#training">The Training Loop — Step by Step</a></li>
+    <li><a href="#gradients">What "Gradient" Means Here</a></li>
+    <li><a href="#ssim">The SSIM Loss — Why Not Just MSE?</a></li>
+    <li><a href="#data">The Data Pipeline</a></li>
+    <li><a href="#hyperparams">Key Hyperparameters and Their Effect</a></li>
+    <li><a href="#intuition">Physical Intuition for Each Piece</a></li>
+  </ol>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h2 id="problem">1. The Problem: Simulations Don't Look Real</h2>
+
+<p>
+  Your pipeline uses <strong>lenstronomy</strong> to forward-model gravitational lensing: given a lens mass distribution and a source galaxy, it ray-traces light and produces a synthetic 125×125 pixel image. These simulations are physically correct, but they're missing a crucial ingredient — the <em>instrument</em>.
+</p>
+<p>
+  Real JWST images (or VELA mock observations) have:
+</p>
+<ul style="margin: 0.5rem 0 1rem 1.5rem;">
+  <li>Correlated noise from the detector and background sky</li>
+  <li>PSF blurring from the optics and diffraction</li>
+  <li>Compression artifacts from the detector readout</li>
+  <li>Neighbor contamination from nearby galaxies in the field</li>
+  <li>Realistic flux calibration quirks</li>
+</ul>
+<p>
+  If you train a neural network classifier on clean simulations and then run it on real data, it will fail — not because the physics is wrong, but because the <em>texture</em> and <em>noise structure</em> are different. This is the <strong>domain gap</strong> problem.
+</p>
+<p>
+  The SimGAN's job is to <strong>bridge this gap</strong>: take a lenstronomy simulation and retouch it so it looks like it was observed by JWST, while keeping the lensing geometry intact.
+</p>
+
+<div class="note physics">
+  <strong>Physics analogy:</strong> Think of it like a forward-model correction. You have a theoretical prediction (the lenstronomy image), and you want to add the instrument response function — but instead of specifying the IRF analytically, you <em>learn</em> it from data. The GAN is your empirical IRF estimator.
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h2 id="gan-idea">2. The GAN Idea — The Two-Player Game</h2>
+
+<p>
+  A GAN involves two networks competing against each other. In your case, there's a specific variant called a <strong>SimGAN</strong> (Shrivastava et al. 2017), designed for exactly this simulation-refinement task.
+</p>
+
+<p>The two players are:</p>
+
+<table>
+  <tr>
+    <th>Network</th>
+    <th>Input</th>
+    <th>Output</th>
+    <th>Goal</th>
+  </tr>
+  <tr>
+    <td><strong>Refiner R</strong></td>
+    <td>Simulated image <span class="pill sim">sim</span></td>
+    <td>Refined image <span class="pill ref">ref</span></td>
+    <td>Make <span class="pill ref">ref</span> look real enough to fool D</td>
+  </tr>
+  <tr>
+    <td><strong>Discriminator D</strong></td>
+    <td>Any 125×125 image</td>
+    <td>Probability ∈ [0, 1]</td>
+    <td>Correctly label real=1, refined=0</td>
+  </tr>
+</table>
+
+<p>
+  Neither network is a <em>generator</em> in the classic GAN sense. The Refiner doesn't create images from noise — it <em>edits</em> existing simulations. This makes it much more constrained and stable to train, and it preserves the physics.
+</p>
+
+<p>The game reaches a (theoretical) equilibrium when:</p>
+<ul style="margin: 0.5rem 0 1rem 1.5rem;">
+  <li>D cannot distinguish refined images from real ones (outputs 0.5 for everything)</li>
+  <li>R has learned to add just the right texture/noise to close the domain gap</li>
+</ul>
+
+<div class="note physics">
+  <strong>Game theory framing:</strong> This is a minimax game. D wants to <em>maximize</em> its classification accuracy; R wants to <em>minimize</em> D's accuracy. At Nash equilibrium — if it exists — both players are stuck: R can't improve without D getting better, and D can't improve because R's output is indistinguishable from real data.
+</div>
+
+<div class="flow-row">
+  <div class="flow-box data">Lenstronomy sim<br><small>(125×125)</small></div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-box R">Refiner R<br><small>edits image</small></div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-box data" style="border-color:#9999ff;color:#9999ff;">Refined image<br><small>(125×125)</small></div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-box D">Discriminator D<br><small>real or fake?</small></div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-box data" style="min-width:70px;">0 or 1</div>
+</div>
+<div class="flow-row">
+  <div class="flow-box data">JWST / VELA<br><small>(real image)</small></div>
+  <span class="flow-arrow" style="margin-left:182px;">→</span>
+  <div class="flow-box D" style="margin-left:0;">Discriminator D</div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-box data" style="min-width:70px;">0 or 1</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h2 id="architecture">3. Network Architectures in Detail</h2>
+
+<h3>3a. The Refiner (R)</h3>
+
+<p>
+  The Refiner is a <strong>fully convolutional residual network</strong>. "Fully convolutional" means it contains no dense (fully-connected) layers — every operation slides a small filter across the image. This gives it a key property: it can only make <em>local</em> edits. A pixel in the output depends only on a neighborhood of pixels in the input, not the entire image at once.
+</p>
+
+<div class="arch-diagram">
+<span class="label">Input</span>  (batch, <span class="highlight">1</span>, 125, 125)  ← simulated image, 1 channel (grayscale)
+  │
+  ▼
+<span class="box">Conv2d(1 → 64, kernel=3×3, pad=1)</span>  ← 64 "feature detectors" slide across image
+<span class="box">ReLU</span>                                 ← nonlinearity: max(0, x)
+  │
+  ▼  ×4
+┌─────────────────────────────────────────────────────┐
+│  <span class="box">Conv2d(64 → 64, kernel=3×3, pad=1)</span>                  │
+│  <span class="box">BatchNorm2d</span>                                          │
+│  <span class="box">ReLU</span>                                                 │
+│  <span class="box">Conv2d(64 → 64, kernel=3×3, pad=1)</span>                  │
+│  <span class="box">BatchNorm2d</span>                                          │
+│  output = block(x) + x   <span class="highlight">← SKIP CONNECTION</span>            │
+└─────────────────────────────────────────────────────┘
+  │
+  ▼
+<span class="box">Conv2d(64 → 1, kernel=1×1)</span>  ← compress back to 1 channel
+<span class="box">Sigmoid</span>                      ← squash to [0, 1]
+  │
+  ▼
+<span class="label">Output</span> (batch, <span class="highlight">1</span>, 125, 125)  ← refined image, same shape as input
+</div>
+
+<h4>What is a residual block / skip connection?</h4>
+<p>
+  The key innovation is the <strong>skip connection</strong>: <code>output = block(x) + x</code>. Instead of the block learning to produce the refined image directly, it learns to produce the <em>correction</em> (the delta). If the block outputs zeros, the image passes through unchanged — this is an identity mapping.
+</p>
+<div class="note physics">
+  <strong>Physics analogy:</strong> Think of it like perturbation theory. The block computes the first-order correction δ to the zeroth-order solution x. The skip connection enforces that the network starts near the identity and can only add small perturbations — exactly what you want for a refiner that shouldn't destroy the lensing geometry.
+</div>
+
+<h4>What does BatchNorm do?</h4>
+<p>
+  Batch Normalization (BatchNorm) normalizes the activations across each mini-batch to have mean≈0 and variance≈1. This stabilizes training by preventing activations from exploding or vanishing. It also has a slight regularizing effect. It has two learnable parameters per channel: a scale γ and shift β, so it can undo the normalization if needed.
+</p>
+
+<h4>Padding=1 on 3×3 convolutions</h4>
+<p>
+  Without padding, each convolution would shrink the image by 2 pixels on each side. With <code>pad=1</code>, a 1-pixel border of zeros is added before the convolution, so the output stays exactly 125×125. The spatial resolution is preserved throughout the Refiner.
+</p>
+
+<h4>The 1×1 exit convolution</h4>
+<p>
+  The final <code>Conv2d(64→1, kernel=1×1)</code> is a weighted sum across the 64 feature channels at each pixel independently. It collapses the 64-channel feature map back to a single-channel image. Since kernel=1×1, there is no spatial mixing — it's a pure per-pixel linear combination of features.
+</p>
+
+<h3>3b. The Discriminator (D)</h3>
+
+<p>
+  The Discriminator is a <strong>strided convolutional classifier</strong>. It takes a 125×125 image and outputs a single number in [0,1] — its estimate of the probability the image is real.
+</p>
+
+<div class="arch-diagram">
+<span class="label">Input</span>  (batch, <span class="highlight">1</span>, 125, 125)
+  │
+  ▼
+<span class="box">Conv2d(1→32,  kernel=4×4, stride=2, pad=1)</span>  → (batch, 32, 62, 62)
+<span class="box">LeakyReLU(0.2)</span>
+<span class="box">Dropout(0.3)</span>
+  │
+  ▼
+<span class="box">Conv2d(32→64, kernel=4×4, stride=2, pad=1)</span>  → (batch, 64, 31, 31)
+<span class="box">BatchNorm2d(64)</span>
+<span class="box">LeakyReLU(0.2)</span>
+<span class="box">Dropout(0.3)</span>
+  │
+  ▼
+<span class="box">Conv2d(64→128, kernel=4×4, stride=2, pad=1)</span> → (batch, 128, 15, 15)
+<span class="box">BatchNorm2d(128)</span>
+<span class="box">LeakyReLU(0.2)</span>
+<span class="box">Dropout(0.3)</span>
+  │
+  ▼
+<span class="box">Conv2d(128→1, kernel=15×15)</span>                 → (batch, 1, 1, 1)
+<span class="box">Sigmoid</span>
+<span class="box">.view(-1)</span>                                    → (batch,)
+  │
+  ▼
+<span class="label">Output</span>  (batch,)  ← one probability per image
+</div>
+
+<h4>Stride-2 convolutions vs. pooling</h4>
+<p>
+  Each strided convolution (<code>stride=2</code>) halves the spatial resolution while doubling the channel count. This is a learned downsampling — the network decides which spatial information to keep, unlike max-pooling which just takes the largest value in each 2×2 block.
+</p>
+
+<h4>LeakyReLU instead of ReLU</h4>
+<p>
+  A standard ReLU outputs 0 for any negative input, which means a neuron can permanently "die" — once its output goes negative, it never fires and its gradient is always zero. LeakyReLU instead outputs <code>0.2 × x</code> for negative x, keeping a small gradient flowing. This matters especially in the Discriminator, where gradients need to reach the Refiner.
+</p>
+
+<h4>Dropout(0.3)</h4>
+<p>
+  During each training step, 30% of activations are randomly zeroed out. This prevents the Discriminator from memorizing specific images and forces it to learn robust, generalizable features. It also acts as a regularizer to prevent it from becoming too strong and overwhelming the Refiner.
+</p>
+
+<h4>The 15×15 final convolution — global pooling</h4>
+<p>
+  After three stride-2 convolutions, the 125×125 image has been compressed to 15×15. A Conv2d with a 15×15 kernel covers the <em>entire</em> remaining spatial extent at once. The result is a single number per image — equivalent to global pooling, but learned rather than fixed. This is how the Discriminator reduces a 2D image to a scalar probability.
+</p>
+
+
+<!-- ═══════════════════════════════════════════════ -->
+<h2 id="loss">4. The Loss Functions — Exactly</h2>
+
+<p>
+  A "loss function" is simply a number that measures how badly a network is doing. The training algorithm tries to minimize this number by adjusting the network's parameters. Let's go through each loss term precisely.
+</p>
+
+<h3>4a. Binary Cross-Entropy (BCE) — The Shared Currency</h3>
+
+<p>
+  Both the Discriminator and Refiner losses are built from <strong>Binary Cross-Entropy</strong>. For a single image with Discriminator output <span class="math">p</span> and true label <span class="math">y</span> ∈ {0, 1}:
+</p>
+
+<div class="math-block">
+  BCE(p, y) = −[ y · log(p) + (1 − y) · log(1 − p) ]
+</div>
+
+<p>
+  When <span class="math">y = 1</span> (real image), this becomes <span class="math">−log(p)</span> — large when p is small (confidently wrong), zero when p=1 (correct). When <span class="math">y = 0</span> (fake image), it becomes <span class="math">−log(1−p)</span> — large when p is close to 1. The function is always ≥ 0 and equals 0 only when the prediction is perfect.
+</p>
+
+<div class="note physics">
+  <strong>Physics analogy:</strong> BCE is the negative log-likelihood of a Bernoulli distribution. If you model each pixel classification as a coin flip with probability p of being "real," BCE is the information surprise (in nats) of seeing the true label. Minimizing BCE is equivalent to maximum likelihood estimation for a binary classifier.
+</div>
+
+<h3>4b. The Discriminator Loss</h3>
+
+<p>
+  The Discriminator sees two batches per step: a batch of real images and a batch of refined images. Its loss is:
+</p>
+
+<div class="math-block">
+  L<sub>D</sub> = ½ · BCE(D(x<sub>real</sub>), 1) + ½ · BCE(D(R(x<sub>sim</sub>)), 0)
+</div>
+
+<p>Breaking this down:</p>
+<ul style="margin: 0.5rem 0 1rem 1.5rem;">
+  <li><strong>BCE(D(x<sub>real</sub>), 1)</strong>: For each real JWST/VELA image, D should output 1. This term penalizes D for calling real images fake.</li>
+  <li><strong>BCE(D(R(x<sub>sim</sub>)), 0)</strong>: For each refined simulation, D should output 0. This term penalizes D for calling refined images real.</li>
+  <li><strong>Factor of ½</strong>: Equal weighting between the two error types. D is being trained to be a balanced classifier, not biased toward one class.</li>
+</ul>
+
+<p>
+  Note that when computing the Discriminator loss, the refined images <code>R(x_sim)</code> are computed with <strong>no gradient tracking on R</strong> (via <code>torch.no_grad()</code>). This is critical — the Discriminator update should only change D's parameters, not R's.
+</p>
+
+<h3>4c. The Refiner Loss</h3>
+
+<p>
+  The Refiner loss has two terms pulled in opposite directions:
+</p>
+
+<div class="math-block">
+  L<sub>R</sub> = L<sub>adv</sub> + λ · L<sub>pres</sub>
+</div>
+
+<h4>Term 1: The Adversarial Loss L<sub>adv</sub></h4>
+
+<div class="math-block">
+  L<sub>adv</sub> = BCE(D(R(x<sub>sim</sub>)), 1)
+</div>
+
+<p>
+  This is the same BCE formula, but now with label=1 even though the image is refined (fake). The Refiner wants D to output 1 for its refined images — to fool D into thinking they're real. So R is minimizing the cost of D being wrong about its output.
+</p>
+<p>
+  Crucially, this time the gradient <em>does</em> flow back through D and into R. When L<sub>adv</sub> is large (D confidently outputs 0 = "fake"), the gradient tells R: "your refinement looks unrealistic — change your weights to produce outputs that D scores higher." D's weights are frozen during this step.
+</p>
+
+<h4>Term 2: The Preservation Loss L<sub>pres</sub></h4>
+
+<p>
+  This term prevents the Refiner from simply outputting the average JWST image. Without it, R would quickly learn to produce images that look real by ignoring the simulation entirely — destroying all the lensing physics.
+</p>
+<p>
+  The preservation loss penalizes R for changing the simulation too much. Your code offers two options:
+</p>
+
+<h4>Option A: MSE (Mean Squared Error)</h4>
+
+<div class="math-block">
+  L<sub>pres</sub><sup>MSE</sup> = (1/N) Σ<sub>i,j</sub> (R(x<sub>sim</sub>)<sub>ij</sub> − x<sub>sim,ij</sub>)<sup>2</sup>
+</div>
+
+<p>
+  This is just the average squared pixel difference between the refined image and the original simulation. Simple and differentiable everywhere. The problem: it treats all pixels equally and heavily penalizes large changes anywhere, even in regions where the noise structure needs to change a lot.
+</p>
+
+<h4>Option B: SSIM (Structural Similarity Index) — default</h4>
+
+<p>
+  SSIM is more sophisticated. Rather than comparing pixel values directly, it compares <em>local statistics</em>: luminance, contrast, and structure. See Section 7 for the full breakdown. The preservation loss is:
+</p>
+
+<div class="math-block">
+  L<sub>pres</sub><sup>SSIM</sup> = 1 − SSIM(R(x<sub>sim</sub>), x<sub>sim</sub>)
+</div>
+
+<p>
+  Since SSIM ∈ [0, 1] (1 = identical images), this loss is 0 when the refined image is identical to the simulation, and approaches 1 when it's completely different. This is more tolerant of noise changes but sensitive to structural distortions.
+</p>
+
+<h4>The λ balancing parameter</h4>
+
+<p>
+  The hyperparameter λ (default=10.0 for SSIM) controls the trade-off:
+</p>
+<ul style="margin: 0.5rem 0 1rem 1.5rem;">
+  <li><strong>Too large λ</strong>: R barely modifies the simulation. L<sub>pres</sub> dominates. The domain gap persists — refined images still look simulated.</li>
+  <li><strong>Too small λ</strong>: R ignores the simulation structure. L<sub>adv</sub> dominates. Refined images look real but the lensing geometry is destroyed.</li>
+  <li><strong>λ=10 (SSIM default)</strong>: Both terms are on a similar scale. L<sub>adv</sub> ∈ [0, log(2)] ≈ [0, 0.69]; L<sub>pres</sub><sup>SSIM</sup> ∈ [0, 1]. λ=10 gives preservation about 10× more weight per unit, favoring physics preservation.</li>
+</ul>
+
+<div class="note warning">
+  <strong>Why λ≈200 for MSE?</strong> Simulated images are normalized to [0,1] and lens arcs are faint — typical pixel values are ≈0.05. So (Δpixel)² ≈ 0.0025 per pixel, and the mean over 125×125=15625 pixels gives L<sub>pres</sub><sup>MSE</sup> ≈ 0.003 even for moderate changes. Meanwhile L<sub>adv</sub> ≈ 0.5 — 100× larger! Without λ≈200, the MSE term would be irrelevant.
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h2 id="training">5. The Training Loop — Step by Step</h2>
+
+<p>
+  Training proceeds epoch by epoch. Each epoch iterates through both datasets in synchronized mini-batches. Here is what happens in a single iteration:
+</p>
+
+<pre>
+for each (real_batch, sim_batch) in zip(real_loader, sim_loader):
+
+    ┌─────────────────────────────────────────────────────────┐
+    │  STEP 1: Update Discriminator                           │
+    │                                                         │
+    │  refined = R(sim_batch)       # forward pass through R  │
+    │  (no gradients recorded for R)                          │
+    │                                                         │
+    │  opt_D.zero_grad()            # clear old gradients     │
+    │  L_D = 0.5*(BCE(D(real_batch), 1)                       │
+    │           + BCE(D(refined), 0))                         │
+    │  L_D.backward()              # compute ∂L_D/∂(D params) │
+    │  opt_D.step()                # update D params only     │
+    └─────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────┐
+    │  STEP 2: Update Refiner                                 │
+    │                                                         │
+    │  refined = R(sim_batch)       # fresh forward pass      │
+    │  (gradients ARE recorded for R and D)                   │
+    │                                                         │
+    │  opt_R.zero_grad()            # clear old gradients     │
+    │  L_R = BCE(D(refined), 1) + λ * L_pres(refined, sim)   │
+    │  L_R.backward()              # compute ∂L_R/∂(R params) │
+    │  opt_R.step()                # update R params only     │
+    └─────────────────────────────────────────────────────────┘
+</pre>
+
+<h4>Why two separate forward passes?</h4>
+<p>
+  In Step 1, <code>torch.no_grad()</code> means PyTorch doesn't build the computation graph for R. This is an optimization — we don't need gradients w.r.t. R, and not building the graph saves memory and computation. In Step 2, we do a fresh forward pass so that a full computation graph exists from R's weights through to the loss. If we tried to reuse Step 1's refined images in Step 2, there would be no graph connecting the loss to R's weights, and <code>backward()</code> would fail.
+</p>
+
+<h4>Why are the optimizers updated separately?</h4>
+<p>
+  <code>opt_D.step()</code> only modifies D's parameters; <code>opt_R.step()</code> only modifies R's parameters. Even though the forward passes send gradients through both networks, each optimizer only applies the gradients for its own network. The parameters that get updated are exactly the ones passed to each optimizer at construction:
+</p>
+<pre>
+opt_R = Adam(R.parameters(), lr=1e-4, betas=(0.5, 0.999))
+opt_D = Adam(D.parameters(), lr=1e-5, betas=(0.5, 0.999))
+</pre>
+
+<h4>Why is D's learning rate 10× lower than R's?</h4>
+<p>
+  The Discriminator can learn very quickly relative to the Refiner — it's a simpler task (classify) than the Refiner's task (edit convincingly). If D learns too fast, it becomes near-perfect before R has a chance to improve, the adversarial gradient saturates (loss ≈ 0, gradient ≈ 0), and R stops learning. The lower learning rate keeps D from running away.
+</p>
+
+<h4>Adam optimizer — betas=(0.5, 0.999)</h4>
+<p>
+  Adam maintains a running average of past gradients (β₁=0.5, short memory) and past squared gradients (β₂=0.999, long memory). It uses these to adapt the step size per parameter. The unusual β₁=0.5 (instead of the default 0.9) was recommended in the original DCGAN paper and makes the optimizer respond more quickly to gradient sign changes — useful in the adversarial setting where gradients can flip direction.
+</p>
+
+<h4>Checkpoint and visualization</h4>
+<p>
+  Every 10 epochs (by default), the code:
+</p>
+<ul style="margin: 0.5rem 0 1rem 1.5rem;">
+  <li>Saves R and D weights to <code>checkpoints/</code> as .pt files</li>
+  <li>Saves a loss plot showing L_D, L_adv, L_pres over iterations</li>
+  <li>Saves a sample grid showing three columns: simulated | refined | real — for visual inspection</li>
+</ul>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h2 id="gradients">6. What "Gradient" Means Here</h2>
+
+<p>
+  Every parameter in R and D is a floating-point number. The entire training procedure is asking: "which direction should I nudge each number to reduce the loss?" The answer is the <strong>gradient</strong> — the partial derivative of the loss with respect to each parameter.
+</p>
+
+<p>
+  Consider a single weight <span class="math">w</span> in the Refiner's first convolution layer. It affects the loss via a long chain:
+</p>
+
+<div class="math-block">
+  w → (feature maps) → (refined image) → D(refined) → BCE → L_R
+</div>
+
+<p>
+  The chain rule computes:
+</p>
+
+<div class="math-block">
+  ∂L<sub>R</sub>/∂w = (∂L<sub>R</sub>/∂D(refined)) · (∂D(refined)/∂refined) · (∂refined/∂w)
+</div>
+
+<p>
+  PyTorch calls <code>loss.backward()</code> to compute all these partial derivatives automatically using reverse-mode automatic differentiation (backpropagation). It traverses the computation graph backward from the loss, accumulating gradients at each parameter using the chain rule.
+</p>
+
+<p>
+  Adam then updates: <span class="math">w ← w − lr · (adjusted gradient)</span>. The "adjusted" part is Adam's per-parameter learning rate scaling.
+</p>
+
+<div class="note physics">
+  <strong>Physics analogy:</strong> Think of the loss landscape as a potential energy surface over a very high-dimensional space (one dimension per parameter — your Refiner has ~260k parameters). Training is gradient descent on this surface: at each step, you compute the local slope and take a step downhill. Adam is a sophisticated version that adapts the step size based on the local curvature history.
+</div>
+
+
+<!-- ═══════════════════════════════════════════════ -->
+<h2 id="ssim">7. The SSIM Loss — Why Not Just MSE?</h2>
+
+<p>
+  MSE treats every pixel difference identically. A 0.1 shift in a blank sky pixel costs the same as a 0.1 shift in the center of the Einstein ring. SSIM was designed to mimic human visual perception — we're sensitive to structure and contrast, not raw pixel values.
+</p>
+
+<h3>How SSIM is computed</h3>
+
+<p>
+  For two image patches x and y of size 11×11 (weighted by a Gaussian window with σ=1.5):
+</p>
+
+<table>
+  <tr>
+    <th>Quantity</th>
+    <th>Formula</th>
+    <th>What it captures</th>
+  </tr>
+  <tr>
+    <td>μ<sub>x</sub>, μ<sub>y</sub></td>
+    <td>Gaussian-weighted mean of x and y</td>
+    <td>Local luminance</td>
+  </tr>
+  <tr>
+    <td>σ<sub>x</sub>², σ<sub>y</sub>²</td>
+    <td>Gaussian-weighted variance</td>
+    <td>Local contrast</td>
+  </tr>
+  <tr>
+    <td>σ<sub>xy</sub></td>
+    <td>Gaussian-weighted covariance</td>
+    <td>Local structural correlation</td>
+  </tr>
+</table>
+
+<div class="math-block">
+  SSIM(x, y) = [(2μ<sub>x</sub>μ<sub>y</sub> + C₁)(2σ<sub>xy</sub> + C₂)] / [(μ<sub>x</sub>² + μ<sub>y</sub>² + C₁)(σ<sub>x</sub>² + σ<sub>y</sub>² + C₂)]
+</div>
+
+<p>
+  where <span class="math">C₁ = (0.01)² = 10⁻⁴</span> and <span class="math">C₂ = (0.03)² = 9×10⁻⁴</span> are small stabilization constants to avoid division by near-zero denominators. Your code computes this for every pixel location using a convolution with a Gaussian kernel, then takes the mean over all pixels:
+</p>
+
+<div class="math-block">
+  L<sub>pres</sub><sup>SSIM</sup> = 1 − (1/HW) Σ<sub>i,j</sub> SSIM<sub>ij</sub>(R(x), x)
+</div>
+
+<h4>Why Gaussian-weighted rather than flat-window?</h4>
+<p>
+  Pixels near the center of an 11×11 patch contribute more than pixels at the edge. This reduces blocking artifacts — SSIM values computed with a flat window show discontinuities at patch boundaries. The Gaussian kernel (σ=1.5) effectively gives a smooth, overlapping local estimate.
+</p>
+
+<h4>Why does SSIM tolerate noise better than MSE?</h4>
+<p>
+  Noise in an image is random and spatially uncorrelated. In any 11×11 patch, noise has near-zero covariance with a reference image (σ<sub>xy</sub> ≈ 0), but it also appears in both σ<sub>x</sub>² and σ<sub>y</sub>². The SSIM formula factors these out — a noisy but structurally similar image still scores high SSIM. MSE instead penalizes noise directly because it squares every pixel difference.
+</p>
+<p>
+  For your use case: you <em>want</em> the Refiner to add realistic noise (to close the domain gap), but you don't want it to move the arc positions. SSIM allows noise changes while protecting structural similarity — exactly the right prior for this problem.
+</p>
+
+<div class="note physics">
+  <strong>Physics analogy:</strong> SSIM separates a signal into three independent components — mean flux (luminance), flux variance (contrast), and spatial correlation structure — and checks each separately. It's similar to how you might compare two CMB maps: you'd compare power spectra and correlation functions rather than pixel-by-pixel residuals.
+</div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h2 id="data">8. The Data Pipeline</h2>
+
+<p>
+  The two datasets (real and simulated) are loaded and preprocessed before training begins.
+</p>
+
+<h3>8a. Simulated Images (lenstronomy)</h3>
+
+<p>
+  Source: <code>/global/cfs/projectdirs/deepsrch/jwst_sims/sims.15-.5/</code>
+</p>
+<ul style="margin: 0.5rem 0 1rem 1.5rem;">
+  <li>Loaded from <code>images.npy</code> (all simulations) and <code>lensed.npy</code> (binary flag)</li>
+  <li>Filtered to only lensed images (<code>lensed==1</code>) when <code>lens_only=True</code></li>
+  <li>Each image is independently normalized: <code>img = (img − min) / (max − min)</code> → [0, 1]</li>
+  <li>Reshaped to (N, 1, 125, 125) — the "1" is the channel dimension (grayscale)</li>
+</ul>
+
+<h3>8b. Real Images — Two Options</h3>
+
+<h4>JWST GOODS-S Cutouts (<code>--real-source jwst</code>)</h4>
+<ul style="margin: 0.5rem 0 1rem 1.5rem;">
+  <li>Source: GOODS-S F115W mosaic + JADES catalog of galaxy positions</li>
+  <li>125×125 postage stamps extracted at each catalog position using WCS (world coordinate system) to convert RA/Dec → pixel coordinates</li>
+  <li>Up to 5000 cutouts by default, with a stride parameter to avoid crowded extractions</li>
+  <li>Per-image min-max normalization</li>
+</ul>
+
+<h4>VELA Cosmological Simulations (<code>--real-source vela</code>, default)</h4>
+<ul style="margin: 0.5rem 0 1rem 1.5rem;">
+  <li>Source: VELA galaxy simulation suite, mock JWST observations in F115W</li>
+  <li>Central 125×125 crop from 800×800 FITS frames</li>
+  <li>Blank frames filtered out (mean pixel value &lt; 10⁻⁵)</li>
+  <li>Per-image min-max normalization</li>
+  <li>Advantage: Cleaner than raw JWST (no cosmic rays, no neighbor contamination), but still has realistic noise texture and PSF</li>
+</ul>
+
+<h3>8c. DataLoader mechanics</h3>
+
+<p>
+  Both datasets are wrapped in PyTorch <code>TensorDataset</code> → <code>DataLoader</code>:
+</p>
+<pre>
+real_loader = DataLoader(TensorDataset(real_t),
+                         batch_size=32, shuffle=True, drop_last=True)
+sim_loader  = DataLoader(TensorDataset(sim_t),
+                         batch_size=32, shuffle=True, drop_last=True)
+</pre>
+
+<p>
+  The training loop zips both loaders: <code>zip(real_loader, sim_loader)</code>. This means each iteration gets one batch of real and one batch of simulated images. They are shuffled independently — there's no pairing between individual real and simulated images. The number of iterations per epoch is determined by whichever dataset is smaller.
+</p>
+
+<p>
+  <code>drop_last=True</code> discards any final partial batch. This keeps batch sizes consistent, which matters for BatchNorm (which computes statistics over the batch — a batch size of 1 would give a degenerate estimate).
+</p>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h2 id="hyperparams">9. Key Hyperparameters and Their Effect</h2>
+
+<table>
+  <tr>
+    <th>Parameter</th>
+    <th>Default</th>
+    <th>What it controls</th>
+    <th>If too high</th>
+    <th>If too low</th>
+  </tr>
+  <tr>
+    <td><code>--lr</code></td>
+    <td>1e-4</td>
+    <td>Refiner learning rate</td>
+    <td>Unstable, oscillating loss</td>
+    <td>Very slow convergence</td>
+  </tr>
+  <tr>
+    <td><code>--lr-d</code></td>
+    <td>1e-5</td>
+    <td>Discriminator learning rate</td>
+    <td>D dominates, R gradient vanishes</td>
+    <td>D too weak to guide R</td>
+  </tr>
+  <tr>
+    <td><code>--lam</code></td>
+    <td>10.0</td>
+    <td>Weight of preservation loss</td>
+    <td>R barely modifies sims (domain gap persists)</td>
+    <td>R destroys lensing structure</td>
+  </tr>
+  <tr>
+    <td><code>--batch-size</code></td>
+    <td>32</td>
+    <td>Images per update step</td>
+    <td>More memory, more stable gradients</td>
+    <td>Noisy gradients, unstable BatchNorm</td>
+  </tr>
+  <tr>
+    <td><code>--epochs</code></td>
+    <td>50</td>
+    <td>Training duration</td>
+    <td>Risk of overfitting to real dataset</td>
+    <td>R doesn't fully close domain gap</td>
+  </tr>
+  <tr>
+    <td><code>--pres-loss</code></td>
+    <td>ssim</td>
+    <td>Preservation loss type</td>
+    <td colspan="2">SSIM preserves structure but allows noise; MSE penalizes all pixel changes equally</td>
+  </tr>
+  <tr>
+    <td><code>--real-source</code></td>
+    <td>vela</td>
+    <td>Target distribution</td>
+    <td colspan="2">VELA = cleaner but synthetic; JWST = noisier but truly observed</td>
+  </tr>
+</table>
+
+<!-- ═══════════════════════════════════════════════ -->
+<h2 id="intuition">10. Physical Intuition for Each Piece</h2>
+
+<h3>What the Refiner is actually learning</h3>
+
+<p>
+  After training converges, the Refiner has learned a mapping from clean lenstronomy images to images with a realistic noise texture and PSF. Concretely, for each pixel in the simulation, the Refiner applies a learned local filter (via its residual blocks) that adds correlated noise, softens sharp edges to match the JWST PSF, and adjusts the background level.
+</p>
+<p>
+  Because of the residual structure, you can decompose the output as:
+</p>
+<div class="math-block">
+  R(x<sub>sim</sub>) = x<sub>sim</sub> + Δ(x<sub>sim</sub>)
+</div>
+<p>
+  where Δ is the learned correction. If you subtract the two, you get the pure instrument response learned by the network. This correction is not a fixed PSF convolution — it's <em>image-dependent</em>, because the residual blocks are nonlinear and can apply different corrections to bright arcs vs. faint background.
+</p>
+
+<h3>What the Discriminator is actually learning</h3>
+
+<p>
+  The Discriminator learns to detect features that are present in real JWST/VELA images but absent in lenstronomy simulations: the specific noise covariance structure of the detector, the wing profile of the JWST PSF on faint sources, the way sky background fluctuates between exposures. These are implicit — the Discriminator doesn't output an explanation, just a binary judgment.
+</p>
+<p>
+  After training, the Discriminator is typically discarded. Its value was in generating the adversarial gradient to guide the Refiner's training; it's not needed at inference time.
+</p>
+
+<h3>The equilibrium condition</h3>
+
+<p>
+  Ideally, training converges to a point where:
+</p>
+<ul style="margin: 0.5rem 0 1rem 1.5rem;">
+  <li>D(x<sub>real</sub>) ≈ 0.5 — D can't distinguish real from refined</li>
+  <li>D(R(x<sub>sim</sub>)) ≈ 0.5 — same</li>
+  <li>L<sub>D</sub> ≈ 0.5 × BCE(0.5, 1) + 0.5 × BCE(0.5, 0) = log(2) ≈ 0.693</li>
+  <li>L<sub>adv</sub> ≈ BCE(0.5, 1) = log(2) ≈ 0.693</li>
+</ul>
+<p>
+  In practice, GANs rarely reach perfect equilibrium — the losses oscillate. What you watch for instead is that the sample grid (sim | refined | real) shows the refined images progressively gaining the noise texture and PSF profile of the real images, without losing the arc geometry.
+</p>
+
+<div class="note warning">
+  <strong>Mode collapse:</strong> A failure mode where R learns to always output the same image (or a small set of images) that fool D. Signs: L<sub>adv</sub> drops to near 0 very quickly, the refined column of the sample grid looks identical across rows. The preservation loss λ helps prevent this — if R collapses to a single output, L<sub>pres</sub> explodes because all refined images are far from their corresponding simulations.
+</div>
+
+<h3>Why this approach for gravitational lensing</h3>
+
+<p>
+  The domain gap in gravitational lens searches is severe because:
+</p>
+<ol style="margin: 0.5rem 0 1rem 1.5rem;">
+  <li>Real lenses are extremely rare — ≲1 in 10,000 sources — so any systematic difference between sim and real distributions directly inflates false negatives</li>
+  <li>The JWST PSF is complex and spatially variable across the focal plane</li>
+  <li>The background contamination (neighboring galaxies, intracluster light) is not easily forward-modeled</li>
+</ol>
+<p>
+  SimGAN addresses (2) and (3) without requiring an explicit model of the instrument. The Discriminator implicitly learns whatever differentiates the two domains, and the Refiner is trained to close that gap — all from data, no hand-crafted instrument model required.
+</p>
+
+<hr>
+<p style="color: var(--muted); font-size: 0.85rem; text-align: center;">
+  Generated from <code>gan/networks.py</code>, <code>gan/losses.py</code>, <code>gan/train.py</code>, <code>gan/data_loader.py</code> · May 2026
+</p>
+
+</body>
+</html>
+
+

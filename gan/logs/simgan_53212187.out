@@ -1,0 +1,57 @@
+Using device: cuda
+real source:       vela
+preservation loss: ssim  (lam=10.0)
+Loading data...
+  real:      (5000, 125, 125)
+  simulated: (10000, 125, 125)
+Epoch   1/50 | D_loss=0.1099 | R_adv=2.6931 | R_pres=0.3665
+Epoch   2/50 | D_loss=0.0378 | R_adv=4.0351 | R_pres=0.3826
+Epoch   3/50 | D_loss=0.0651 | R_adv=3.2154 | R_pres=0.5144
+Epoch   4/50 | D_loss=0.0241 | R_adv=4.0122 | R_pres=0.5273
+Epoch   5/50 | D_loss=0.0158 | R_adv=4.6102 | R_pres=0.4136
+Epoch   6/50 | D_loss=0.0064 | R_adv=5.5055 | R_pres=0.2349
+Epoch   7/50 | D_loss=0.0032 | R_adv=6.1852 | R_pres=0.2261
+Epoch   8/50 | D_loss=0.0015 | R_adv=6.5877 | R_pres=0.2138
+Epoch   9/50 | D_loss=0.0014 | R_adv=6.4771 | R_pres=0.1967
+Epoch  10/50 | D_loss=0.0008 | R_adv=7.4788 | R_pres=0.1488
+Epoch  11/50 | D_loss=0.0006 | R_adv=7.8771 | R_pres=0.1455
+Epoch  12/50 | D_loss=0.0004 | R_adv=8.3999 | R_pres=0.1489
+Epoch  13/50 | D_loss=0.0003 | R_adv=8.5348 | R_pres=0.1463
+Epoch  14/50 | D_loss=0.0003 | R_adv=8.7133 | R_pres=0.1458
+Epoch  15/50 | D_loss=0.0002 | R_adv=9.0710 | R_pres=0.1466
+Epoch  16/50 | D_loss=0.0002 | R_adv=9.2181 | R_pres=0.1492
+Epoch  17/50 | D_loss=0.0002 | R_adv=9.2400 | R_pres=0.1478
+Epoch  18/50 | D_loss=0.0001 | R_adv=9.6090 | R_pres=0.1461
+Epoch  19/50 | D_loss=0.0002 | R_adv=9.5386 | R_pres=0.1494
+Epoch  20/50 | D_loss=0.0001 | R_adv=9.7259 | R_pres=0.1477
+Epoch  21/50 | D_loss=0.0002 | R_adv=8.9229 | R_pres=0.2510
+Epoch  22/50 | D_loss=0.0004 | R_adv=8.3586 | R_pres=0.1680
+Epoch  23/50 | D_loss=0.0004 | R_adv=8.5981 | R_pres=0.1340
+Epoch  24/50 | D_loss=0.0004 | R_adv=9.1986 | R_pres=0.1343
+Epoch  25/50 | D_loss=0.0002 | R_adv=9.6533 | R_pres=0.1364
+Epoch  26/50 | D_loss=0.0001 | R_adv=9.3799 | R_pres=0.1710
+Epoch  27/50 | D_loss=0.0001 | R_adv=9.7627 | R_pres=0.1633
+Epoch  28/50 | D_loss=0.0001 | R_adv=9.0103 | R_pres=0.1529
+Epoch  29/50 | D_loss=0.0002 | R_adv=8.4937 | R_pres=0.2162
+Epoch  30/50 | D_loss=0.0001 | R_adv=9.2831 | R_pres=0.2068
+Epoch  31/50 | D_loss=0.0001 | R_adv=9.6003 | R_pres=0.2426
+Epoch  32/50 | D_loss=0.0001 | R_adv=9.6579 | R_pres=0.2029
+Epoch  33/50 | D_loss=0.0001 | R_adv=9.6815 | R_pres=0.2628
+Epoch  34/50 | D_loss=0.0001 | R_adv=9.8975 | R_pres=0.2846
+Epoch  35/50 | D_loss=0.0001 | R_adv=9.1410 | R_pres=0.3257
+Epoch  36/50 | D_loss=0.0023 | R_adv=6.5736 | R_pres=0.0751
+Epoch  37/50 | D_loss=0.0004 | R_adv=8.4151 | R_pres=0.0865
+Epoch  38/50 | D_loss=0.0003 | R_adv=8.8770 | R_pres=0.0839
+Epoch  39/50 | D_loss=0.0002 | R_adv=9.0381 | R_pres=0.0703
+Epoch  40/50 | D_loss=0.0001 | R_adv=9.4100 | R_pres=0.0704
+Epoch  41/50 | D_loss=0.0001 | R_adv=9.5452 | R_pres=0.0720
+Epoch  42/50 | D_loss=0.0001 | R_adv=9.1076 | R_pres=0.0623
+Epoch  43/50 | D_loss=0.0001 | R_adv=9.5372 | R_pres=0.0620
+Epoch  44/50 | D_loss=0.0001 | R_adv=9.8674 | R_pres=0.0619
+Epoch  45/50 | D_loss=0.0000 | R_adv=10.4155 | R_pres=0.0625
+Epoch  46/50 | D_loss=0.0001 | R_adv=10.4419 | R_pres=0.0613
+Epoch  47/50 | D_loss=0.0000 | R_adv=10.4175 | R_pres=0.0623
+Epoch  48/50 | D_loss=0.0000 | R_adv=10.6484 | R_pres=0.0617
+Epoch  49/50 | D_loss=0.0000 | R_adv=11.0641 | R_pres=0.0639
+Epoch  50/50 | D_loss=0.0000 | R_adv=10.9846 | R_pres=0.0630
+Training complete.
